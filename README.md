@@ -1,4 +1,4 @@
-# Traffic_light_controller_Synthesis
+# Exp-6 Traffic_light_controller_Synthesis
 
 ## Aim:
 
@@ -21,7 +21,16 @@ Synthesis requires three files as follows,
 ### Step 2 : Creating an SDC File
 
 •	In your terminal type “gedit input_constraints.sdc” to create an SDC File if you do not have one.
+~~~
+create_clock -name clk -period 2 -waveform {0 1} [get_ports "clk"]
+set_clock_transition -rise 0.1 [get_clocks "clk"]
+set_clock_transition -fall 0.1 [get_clocks "clk"]
+set_clock_uncertainty 0.01 [get_ports "clk"]
+set_input_delay -max 0.8 [get_ports "rst"] -clock [get_clocks "clk"]
+set_output_delay -max 0.8 [get_ports "LED_NS"] -clock [get_clocks "clk"]
+set_output_delay -max 0.8 [get_ports "LED_WE"] -clock [get_clocks "clk"]
 
+~~~
 ### Step 3 : Performing Synthesis
 
 The Liberty files are present in the library path,
@@ -37,13 +46,73 @@ The Liberty files are present in the library path,
 • The tool used for Synthesis is “Genus”. Hence, type “genus -gui” to open the tool.
 
 • Genus Script file with .tcl file Extension commands are executed one by one to synthesize the netlist.
+## Verilog code for traffic light controller:
+~~~
+`timescale 1 ns / 1 ps
+module TrafficLight(input clk, //LED_NS represent the North-South LEDs
+		    input rst, //LED_WE represent the West-East LEDs
+		    output reg [2:0] LED_NS, LED_WE);
+/*Let 100 = Red
+      010 = Yellow
+      001 = Green 
+We have 6 different states, defining them below */
 
-Synthesis RTL Schematic :
+parameter S0 = 6'b000001,   //When NS is green and EW is red
+	  S1 = 6'b000010,   //When NS is yellow and EW is red
+	  S2 = 6'b000100,   //When NS is red and EW is red
+	  S3 = 6'b001000,   //When NS is red and EW is green
+	  S4 = 6'b010000,   //When NS is red and EW is yellow
+	  S5 = 6'b100000;   //When NS is red and EW is red
+//Then the cycle repeats
 
-Area report:
+reg [5:0] state;
+reg [3:0] count;
 
-Power Report:
+//Defining transition of states
+always@(posedge clk or posedge rst)
+begin
+if(rst) begin    //Active HIGH reset
+state <= S0;
+count <= 0; end
+else 
+begin
+case(state)
+S0: begin 
+	if(count == 4'd14)
+	begin count <= 0;
+	state <= S1; end
+	else begin 
+	count <= count + 1; state <= S0; end end
+S1: begin
+~~~
+## run code:
+~~~
+read_libs /cadence/install/FOUNDRY-01/digital/90nm/dig/lib/slow.lib
+read_hdl traffic.v
+elaborate
+syn_generic
+report_area
+syn_map
+report_area
+syn_opt
+report_area 
+report_area > traffic_area.txt
+report_power > traffic_power.txt
+write_hdl > alu_32bit_netlist.v
+gui_show
+~~~
+### Synthesis RTL Schematic :
 
-Result:
+![image](https://github.com/user-attachments/assets/e128b8dd-1e71-4d35-ad9a-ad1e78761b06)
+
+### Area report:
+
+![image](https://github.com/user-attachments/assets/6dabe741-5785-4bd4-aa38-08fb0a634896)
+
+### Power Report:
+
+![image](https://github.com/user-attachments/assets/5975f726-6da3-48ed-aecb-a842480782ca)
+
+## Result:
 
 The generic netlist of Traffic Light Controller has been created, and area, power reports have been tabulated and generated using Genus.
